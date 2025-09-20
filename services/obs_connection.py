@@ -230,6 +230,9 @@ class OBSConnectionManager:
             raise OBSConnectionError("OBS handshake failed: missing Identified acknowledgement")
 
         self._identified.set()
+        if self._ws is not None:
+            # Switch to blocking mode for the dedicated receiver thread.
+            self._ws.settimeout(None)
         logger.debug("OBS WebSocket handshake completed (RPC version {})", self._rpc_version)
 
     def _start_receiver(self) -> None:
