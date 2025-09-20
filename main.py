@@ -45,6 +45,8 @@ class TwitchatIntegrationPlugin(PluginBase):
         )
         self.add_action_holder(self.greet_feed_action_holder)
 
+        self.has_plugin_settings = True
+
         self.register(
             plugin_name="Twitchat Integration",
             github_repo="https://github.com/SecareLupus/StreamControllerTwitchatIntegration",
