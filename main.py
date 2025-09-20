@@ -37,6 +37,8 @@ class TwitchatIntegrationPlugin(PluginBase):
         )
         self._initial_connect_thread: threading.Thread | None = None
 
+        self.has_plugin_settings = True
+
         self.greet_feed_action_holder = ActionHolder(
             plugin_base=self,
             action_base=GreetFeedReadAllAction,
@@ -102,6 +104,12 @@ class TwitchatIntegrationPlugin(PluginBase):
         rows.append(namespace_row)
 
         return rows
+
+    def get_settings_area(self) -> Adw.PreferencesGroup:
+        group = Adw.PreferencesGroup(title="OBS Connection")
+        for row in self.get_config_rows():
+            group.add(row)
+        return group
 
     def _persist_settings(self) -> None:
         self.set_settings(self.settings.to_dict())
