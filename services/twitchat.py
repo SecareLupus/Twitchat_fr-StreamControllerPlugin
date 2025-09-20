@@ -44,7 +44,9 @@ class TwitchatEventBroadcaster:
             raise ValueError("Action identifier must be provided")
 
         event_type = self._format_event_type(action)
-        event_data = payload or {}
+        event_data = dict(payload or {})
+        if not event_data:
+            event_data["action"] = action
         logger.debug("Broadcasting Twitchat event {} with payload {}", event_type, event_data)
 
         response = self._connection.send_request(
