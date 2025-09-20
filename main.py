@@ -5,6 +5,7 @@ from typing import Any, List
 
 from loguru import logger
 
+from src.backend.PluginManager.ActionHolder import ActionHolder
 from src.backend.PluginManager.PluginBase import PluginBase
 
 import gi
@@ -20,6 +21,8 @@ from .services import (
 )
 from .settings import TwitchatSettings
 
+from .actions.GreetFeedReadAll.GreetFeedReadAll import GreetFeedReadAllAction
+
 
 class TwitchatIntegrationPlugin(PluginBase):
     """StreamController plugin entry point for Twitchat integration."""
@@ -33,6 +36,14 @@ class TwitchatIntegrationPlugin(PluginBase):
             self.obs_manager, namespace=self.settings.namespace
         )
         self._initial_connect_thread: threading.Thread | None = None
+
+        self.greet_feed_action_holder = ActionHolder(
+            plugin_base=self,
+            action_base=GreetFeedReadAllAction,
+            action_id="com.secarelupus.twitchatintegration::GreetFeedReadAll",
+            action_name="Twitchat: Mark Greet Feed Read",
+        )
+        self.add_action_holder(self.greet_feed_action_holder)
 
         self.register(
             plugin_name="Twitchat Integration",
