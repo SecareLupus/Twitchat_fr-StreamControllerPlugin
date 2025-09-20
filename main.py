@@ -77,28 +77,33 @@ class TwitchatIntegrationPlugin(PluginBase):
     def get_config_rows(self) -> List[Adw.PreferencesRow]:
         rows: List[Adw.PreferencesRow] = []
 
-        host_row = Adw.EntryRow(title="OBS Host", subtitle="Hostname or IP address")
+        host_row = Adw.EntryRow()
+        host_row.set_title("OBS Host")
         host_row.set_text(self.settings.host)
         host_row.connect("changed", self._on_host_changed)
         rows.append(host_row)
 
-        port_row = Adw.EntryRow(title="Port", subtitle="OBS WebSocket port")
+        port_row = Adw.EntryRow()
+        port_row.set_title("Port")
         port_row.set_input_purpose(Gtk.InputPurpose.DIGITS)
         port_row.set_text(str(self.settings.port))
         port_row.connect("changed", self._on_port_changed)
         rows.append(port_row)
 
-        password_row = Adw.PasswordEntryRow(title="Password")
+        password_row = Adw.PasswordEntryRow()
+        password_row.set_title("Password")
         password_row.set_text(self.settings.password)
         password_row.connect("changed", self._on_password_changed)
         rows.append(password_row)
 
-        ssl_row = Adw.SwitchRow(title="Use secure WebSocket (wss)")
+        ssl_row = Adw.SwitchRow()
+        ssl_row.set_title("Use secure WebSocket (wss)")
         ssl_row.set_active(self.settings.use_ssl)
         ssl_row.connect("notify::active", self._on_ssl_toggled)
         rows.append(ssl_row)
 
-        namespace_row = Adw.EntryRow(title="Event namespace")
+        namespace_row = Adw.EntryRow()
+        namespace_row.set_title("Event namespace")
         namespace_row.set_text(self.settings.namespace)
         namespace_row.connect("changed", self._on_namespace_changed)
         rows.append(namespace_row)
