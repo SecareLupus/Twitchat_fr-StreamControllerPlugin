@@ -1,5 +1,3 @@
-"""Service helpers for the Twitchat integration plugin."""
-
 from .obs_connection import (
     OBSAuthenticationError,
     OBSConnectionConfig,
@@ -9,15 +7,15 @@ from .obs_connection import (
     OBSRequestError,
     OBSResponseTimeoutError,
 )
-from .twitchat import TwitchatEventBroadcaster
+from .twitchat import TwitchatAPI
 
 __all__ = [
+    "OBSAuthenticationError",
     "OBSConnectionConfig",
     "OBSConnectionError",
-    "OBSAuthenticationError",
     "OBSConnectionManager",
     "OBSNotConnectedError",
     "OBSRequestError",
     "OBSResponseTimeoutError",
-    "TwitchatEventBroadcaster",
+    "TwitchatAPI",
 ]

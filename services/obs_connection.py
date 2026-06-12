@@ -7,7 +7,7 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass, replace
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 from loguru import logger
 from websocket import (
@@ -77,6 +77,17 @@ class OBSConnectionManager:
         self._receiver_thread: Optional[threading.Thread] = None
         self._receiver_running = threading.Event()
         self._identified = threading.Event()
+        self._raw_handlers: list[Callable[[str], None]] = []
+
+    def add_raw_handler(self, handler: Callable[[str], None]) -> None:
+        """Register a handler that receives every raw WebSocket message string."""
+        self._raw_handlers.append(handler)
+
+    def remove_raw_handler(self, handler: Callable[[str], None]) -> None:
+        try:
+            self._raw_handlers.remove(handler)
+        except ValueError:
+            pass
 
     # ------------------------------------------------------------------
     # Configuration helpers
@@ -276,6 +287,13 @@ class OBSConnectionManager:
 
             if message is None:
                 continue
+
+            # Dispatch raw message to registered handlers (e.g. TwitchatAPI)
+            for handler in self._raw_handlers:
+                try:
+                    handler(message)
+                except Exception:
+                    pass
 
             try:
                 payload = json.loads(message)
