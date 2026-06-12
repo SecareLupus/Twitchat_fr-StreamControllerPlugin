@@ -78,6 +78,7 @@ class OBSConnectionManager:
         self._receiver_running = threading.Event()
         self._identified = threading.Event()
         self._raw_handlers: list[Callable[[str], None]] = []
+        self._disconnect_callbacks: list[Callable[[], None]] = []
 
     def add_raw_handler(self, handler: Callable[[str], None]) -> None:
         """Register a handler that receives every raw WebSocket message string."""
@@ -86,6 +87,16 @@ class OBSConnectionManager:
     def remove_raw_handler(self, handler: Callable[[str], None]) -> None:
         try:
             self._raw_handlers.remove(handler)
+        except ValueError:
+            pass
+
+    def add_disconnect_callback(self, callback: Callable[[], None]) -> None:
+        """Register a callback invoked when the WebSocket connection drops."""
+        self._disconnect_callbacks.append(callback)
+
+    def remove_disconnect_callback(self, callback: Callable[[], None]) -> None:
+        try:
+            self._disconnect_callbacks.remove(callback)
         except ValueError:
             pass
 
@@ -306,6 +317,13 @@ class OBSConnectionManager:
         self._identified.clear()
         self._receiver_running.clear()
         self._safe_close()
+
+        # Notify disconnect listeners
+        for cb in self._disconnect_callbacks:
+            try:
+                cb()
+            except Exception:
+                pass
 
     def _handle_message(self, payload: Dict[str, Any]) -> None:
         op = payload.get("op")

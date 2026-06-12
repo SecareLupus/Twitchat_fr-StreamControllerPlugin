@@ -76,10 +76,9 @@ class TwitchatIntegrationPlugin(PluginBase):
         self.settings = TwitchatSettings.from_dict(self.get_settings())
         self.obs_manager = OBSConnectionManager(self.settings.to_obs_config())
         self.twitchat = TwitchatAPI(self.obs_manager)
-        self._connection_listeners: list = []
-
-        # Route raw OBS messages through the Twitchat API for event dispatch
         self.obs_manager.add_raw_handler(self.twitchat.handle_raw_message)
+        self.obs_manager.add_disconnect_callback(lambda: self._notify_connection(False))
+        self._connection_listeners: list = []
 
         self.has_plugin_settings = True
 
