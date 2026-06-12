@@ -36,7 +36,6 @@ from .actions.TriggerExecute import TriggerExecute
 from .actions.FollowDisplay import FollowDisplay
 from .actions.SubDisplay import SubDisplay
 from .actions.TrackDisplay import TrackDisplay
-from .actions.Shoutout import Shoutout
 from .actions.SendMessage import SendMessage
 from .actions.BitsDisplay import BitsDisplay
 from .actions.MentionAlert import MentionAlert
@@ -259,7 +258,6 @@ class TwitchatIntegrationPlugin(PluginBase):
         self._ah("Latest Follower", FollowDisplay, "FollowDisplay")
         self._ah("Latest Subscriber", SubDisplay, "SubDisplay")
         self._ah("Current Track", TrackDisplay, "TrackDisplay")
-        self._ah("Shoutout", Shoutout, "Shoutout")
         self._ah("Send Chat Message", SendMessage, "SendMessage")
         self._ah("Latest Cheer", BitsDisplay, "BitsDisplay")
         self._ah("Mention Alert", MentionAlert, "MentionAlert")

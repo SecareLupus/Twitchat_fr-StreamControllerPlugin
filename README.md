@@ -89,7 +89,6 @@ These show live data from Twitchat events on the Stream Deck key.
 | **Raffle Control** | Start / pick winner / end raffle | Mode, command, duration |
 | **Timer / Countdown** | Start timer / start countdown / get current / stop | Mode, name, duration |
 | **Counter Control** | Increment/decrement a counter | Counter ID, step |
-| **Shoutout** | Shoutout latest raider | — |
 
 ## Plugin Settings
 
