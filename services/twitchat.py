@@ -36,9 +36,8 @@ class TwitchatAPI:
         event_data = {
             "origin": "twitchat",
             "type": action_type,
+            "data": data or {},
         }
-        if data is not None:
-            event_data["data"] = data
 
         try:
             self._connection.send_request(
