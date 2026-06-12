@@ -13,6 +13,7 @@ class TwitchatSettings:
     host: str = "127.0.0.1"
     port: int = 4455
     password: str = ""
+    chat_column: int = 0
     use_ssl: bool = False
     namespace: str = "twitchat"
     request_timeout: float = 5.0
@@ -24,6 +25,7 @@ class TwitchatSettings:
             host=str(raw.get("host", cls.host)).strip() or cls.host,
             port=int(raw.get("port", cls.port)),
             password=str(raw.get("password", cls.password)),
+            chat_column=int(raw.get("chat_column", cls.chat_column)),
             use_ssl=bool(raw.get("use_ssl", cls.use_ssl)),
             namespace=str(raw.get("namespace", cls.namespace)).strip() or cls.namespace,
             request_timeout=float(raw.get("request_timeout", cls.request_timeout)),

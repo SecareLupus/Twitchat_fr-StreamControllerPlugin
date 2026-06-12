@@ -17,4 +17,5 @@ class ChatSelectDown(ActionBase):
         self.set_bottom_label("Next Msg")
 
     def on_key_down(self):
-        self.plugin_base.twitchat.send_action("CHAT_FEED_SELECT", {"count": 1})
+        col = self.plugin_base.chat_column
+        self.plugin_base.twitchat.send_action("CHAT_FEED_SELECT", {"count": 1, "col": col})

@@ -62,6 +62,8 @@ from .actions.ChatSelectBan import ChatSelectBan
 from .actions.ChatSelectPin import ChatSelectPin
 from .actions.ChatSelectHighlight import ChatSelectHighlight
 from .actions.ChatSelectShoutout import ChatSelectShoutout
+from .actions.ChatColumnUp import ChatColumnUp
+from .actions.ChatColumnDown import ChatColumnDown
 from .actions.ConnectionStatus import ConnectionStatus
 
 
@@ -115,6 +117,11 @@ class TwitchatIntegrationPlugin(PluginBase):
         """Public method to trigger a manual reconnection."""
         self._connect_in_background()
 
+    @property
+    def chat_column(self) -> int:
+        """The Twitchat chat column index to target (0-based)."""
+        return self.settings.chat_column
+
     # ------------------------------------------------------------------
     # Plugin lifecycle
     # ------------------------------------------------------------------
@@ -148,6 +155,15 @@ class TwitchatIntegrationPlugin(PluginBase):
         password_row.set_text(self.settings.password)
         password_row.connect("changed", self._on_password_changed)
         rows.append(password_row)
+
+        col_row = Adw.ComboRow(title="Chat Column")
+        col_model = Gtk.StringList()
+        for i in range(8):
+            col_model.append(f"Column {i}")
+        col_row.set_model(col_model)
+        col_row.set_selected(self.settings.chat_column)
+        col_row.connect("notify::selected", lambda r, _: self._on_chat_column_changed(r.get_selected()))
+        rows.append(col_row)
 
         return rows
 
@@ -224,6 +240,9 @@ class TwitchatIntegrationPlugin(PluginBase):
     def _on_password_changed(self, row: Adw.PasswordEntryRow) -> None:
         self._update_settings(password=row.get_text())
 
+    def _on_chat_column_changed(self, column: int) -> None:
+        self._update_settings(chat_column=column)
+
     # ------------------------------------------------------------------
     # Connection management
     # ------------------------------------------------------------------
@@ -284,6 +303,8 @@ class TwitchatIntegrationPlugin(PluginBase):
         self._ah("Chat: Pin Message", ChatSelectPin, "ChatSelectPin")
         self._ah("Chat: Highlight Message", ChatSelectHighlight, "ChatSelectHighlight")
         self._ah("Chat: Shoutout User", ChatSelectShoutout, "ChatSelectShoutout")
+        self._ah("Chat: Next Column", ChatColumnUp, "ChatColumnUp")
+        self._ah("Chat: Previous Column", ChatColumnDown, "ChatColumnDown")
         self._ah("Connection Status", ConnectionStatus, "ConnectionStatus")
 
     def _ah(self, name: str, action_cls, action_id: str) -> None:
