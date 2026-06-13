@@ -286,6 +286,7 @@ class OBSConnectionManager:
                 break
             try:
                 message = self._ws.recv()
+                print(f"[OBS-RX] received message ({len(message)} chars)")
             except WebSocketConnectionClosedException:
                 logger.warning("Lost connection to OBS WebSocket")
                 break
