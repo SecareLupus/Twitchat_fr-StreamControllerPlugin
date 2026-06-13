@@ -29,12 +29,15 @@ class FollowDisplay(ActionBase):
         self._request_data()
 
     def _request_data(self):
+        print(f"[FollowDisplay] Requesting GET_SUMMARY_DATA (connected={self.plugin_base.obs_manager.is_connected()})")
         self.plugin_base.twitchat.send_action("GET_SUMMARY_DATA")
 
     def _on_summary(self, data):
+        print(f"[FollowDisplay] _on_summary called, data keys: {list(data.keys()) if data else 'NONE'}")
         if not data:
             return
         follows = data.get("follows", [])
+        print(f"[FollowDisplay] follows count: {len(follows)}")
         if follows:
             latest = follows[-1]
             self._latest_name = latest.get("login", "")
