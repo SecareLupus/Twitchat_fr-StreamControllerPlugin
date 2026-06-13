@@ -1,6 +1,6 @@
 {
     "version": "1.0.0",
-    "thumbnail": "assets/info.png",
+    "thumbnail": "",
     "id": "com_secarelupus_twitchatintegration",
-    "name": "Twitchat Integration"
+    "name": "Twitchat"
 }
