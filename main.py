@@ -1,19 +1,34 @@
 """
-Twitchat StreamController Plugin
+StreamController plugin for Twitchat integration.
 
-Connects to OBS Websocket v5 to send actions and receive events from Twitchat.
-Provides Stream Deck actions for common Twitchat controls.
+Connects to OBS WebSocket v5 to send actions and receive events from
+the Twitchat public API. Provides 35+ Stream Deck actions for chat
+control, moderation, overlays, and live stream monitoring.
 """
-import os
+from __future__ import annotations
+
+import threading
+from typing import Any, List
+
+from loguru import logger
+
+from src.backend.PluginManager.ActionHolder import ActionHolder
+from src.backend.PluginManager.PluginBase import PluginBase
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Gtk, Adw
+from gi.repository import Adw, Gtk
 
-from src.backend.PluginManager.PluginBase import PluginBase
-from src.backend.PluginManager.ActionHolder import ActionHolder
+from .services import (
+    OBSConnectionConfig,
+    OBSConnectionManager,
+    TwitchatAPI,
+)
+from .settings import TwitchatSettings
 
+# ── Actions ──────────────────────────────────────────────────────────
 from .actions.ChatControl import ChatControl
 from .actions.EmergencyToggle import EmergencyToggle
 from .actions.ToggleVisibility import ToggleVisibility
@@ -48,372 +63,127 @@ from .actions.ChatSelectBan import ChatSelectBan
 from .actions.ChatSelectPin import ChatSelectPin
 from .actions.ChatSelectHighlight import ChatSelectHighlight
 from .actions.ChatSelectShoutout import ChatSelectShoutout
+from .actions.ChatColumnUp import ChatColumnUp
+from .actions.ChatColumnDown import ChatColumnDown
 from .actions.ConnectionStatus import ConnectionStatus
 
-from .backend.obs_connection import OBSConnection
 
+class TwitchatIntegrationPlugin(PluginBase):
+    """StreamController plugin entry point for Twitchat integration."""
 
-class TwitchatPlugin(PluginBase):
-    def __init__(self):
-        super().__init__()
+    def __init__(self) -> None:
+        super().__init__(use_legacy_locale=False)
 
-        self.obs_connection = OBSConnection.get()
+        self.settings = TwitchatSettings.from_dict(self.get_settings())
+        self.obs_manager = OBSConnectionManager(self.settings.to_obs_config())
+        self.twitchat = TwitchatAPI(self.obs_manager)
+        self.obs_manager.add_raw_handler(self.twitchat.handle_raw_message)
+        self.obs_manager.add_disconnect_callback(lambda: self._notify_connection(False))
+        self._connection_listeners: list = []
+
         self.has_plugin_settings = True
 
-        # Chat feed control actions
-        self.chat_control_holder = ActionHolder(
-            plugin_base=self,
-            action_base=ChatControl,
-            action_id="com_secarelupus_twitchatintegration::ChatControl",
-            action_name="Chat Control",
-        )
-        self.add_action_holder(self.chat_control_holder)
+        # ── Register all 35 actions ──────────────────────────────────
+        self._register_all_actions()
 
-        # Emergency toggle
-        self.emergency_toggle_holder = ActionHolder(
-            plugin_base=self,
-            action_base=EmergencyToggle,
-            action_id="com_secarelupus_twitchatintegration::EmergencyToggle",
-            action_name="Emergency Toggle",
-        )
-        self.add_action_holder(self.emergency_toggle_holder)
-
-        # Visibility toggles (poll, prediction, bingo, etc.)
-        self.toggle_visibility_holder = ActionHolder(
-            plugin_base=self,
-            action_base=ToggleVisibility,
-            action_id="com_secarelupus_twitchatintegration::ToggleVisibility",
-            action_name="Toggle Panel Visibility",
-        )
-        self.add_action_holder(self.toggle_visibility_holder)
-
-        # Trigger execution
-        self.trigger_execute_holder = ActionHolder(
-            plugin_base=self,
-            action_base=TriggerExecute,
-            action_id="com_secarelupus_twitchatintegration::TriggerExecute",
-            action_name="Execute Trigger",
-        )
-        self.add_action_holder(self.trigger_execute_holder)
-
-        # Event display actions
-        self.follow_display_holder = ActionHolder(
-            plugin_base=self,
-            action_base=FollowDisplay,
-            action_id="com_secarelupus_twitchatintegration::FollowDisplay",
-            action_name="Latest Follower",
-        )
-        self.add_action_holder(self.follow_display_holder)
-
-        self.sub_display_holder = ActionHolder(
-            plugin_base=self,
-            action_base=SubDisplay,
-            action_id="com_secarelupus_twitchatintegration::SubDisplay",
-            action_name="Latest Subscriber",
-        )
-        self.add_action_holder(self.sub_display_holder)
-
-        self.track_display_holder = ActionHolder(
-            plugin_base=self,
-            action_base=TrackDisplay,
-            action_id="com_secarelupus_twitchatintegration::TrackDisplay",
-            action_name="Current Track",
-        )
-        self.add_action_holder(self.track_display_holder)
-
-        # Priority 1 — high-value adds
-        self.shoutout_holder = ActionHolder(
-            plugin_base=self,
-            action_base=Shoutout,
-            action_id="com_secarelupus_twitchatintegration::Shoutout",
-            action_name="Shoutout",
-        )
-        self.add_action_holder(self.shoutout_holder)
-
-        self.send_message_holder = ActionHolder(
-            plugin_base=self,
-            action_base=SendMessage,
-            action_id="com_secarelupus_twitchatintegration::SendMessage",
-            action_name="Send Chat Message",
-        )
-        self.add_action_holder(self.send_message_holder)
-
-        self.bits_display_holder = ActionHolder(
-            plugin_base=self,
-            action_base=BitsDisplay,
-            action_id="com_secarelupus_twitchatintegration::BitsDisplay",
-            action_name="Latest Cheer",
-        )
-        self.add_action_holder(self.bits_display_holder)
-
-        self.mention_alert_holder = ActionHolder(
-            plugin_base=self,
-            action_base=MentionAlert,
-            action_id="com_secarelupus_twitchatintegration::MentionAlert",
-            action_name="Mention Alert",
-        )
-        self.add_action_holder(self.mention_alert_holder)
-
-        # Priority 2 — grouped systems
-        self.raffle_control_holder = ActionHolder(
-            plugin_base=self,
-            action_base=RaffleControl,
-            action_id="com_secarelupus_twitchatintegration::RaffleControl",
-            action_name="Raffle Control",
-        )
-        self.add_action_holder(self.raffle_control_holder)
-
-        self.timer_control_holder = ActionHolder(
-            plugin_base=self,
-            action_base=TimerControl,
-            action_id="com_secarelupus_twitchatintegration::TimerControl",
-            action_name="Timer / Countdown",
-        )
-        self.add_action_holder(self.timer_control_holder)
-
-        self.counter_control_holder = ActionHolder(
-            plugin_base=self,
-            action_base=CounterControl,
-            action_id="com_secarelupus_twitchatintegration::CounterControl",
-            action_name="Counter Control",
-        )
-        self.add_action_holder(self.counter_control_holder)
-
-        self.donation_display_holder = ActionHolder(
-            plugin_base=self,
-            action_base=DonationDisplay,
-            action_id="com_secarelupus_twitchatintegration::DonationDisplay",
-            action_name="Latest Donation",
-        )
-        self.add_action_holder(self.donation_display_holder)
-
-        # AutoMod
-        self.automod_accept_holder = ActionHolder(
-            plugin_base=self,
-            action_base=AutomodAccept,
-            action_id="com_secarelupus_twitchatintegration::AutomodAccept",
-            action_name="AutoMod Accept",
-        )
-        self.add_action_holder(self.automod_accept_holder)
-
-        self.automod_reject_holder = ActionHolder(
-            plugin_base=self,
-            action_base=AutomodReject,
-            action_id="com_secarelupus_twitchatintegration::AutomodReject",
-            action_name="AutoMod Reject",
-        )
-        self.add_action_holder(self.automod_reject_holder)
-
-        # Priority 3 — nice-to-have
-        self.trigger_toggle_holder = ActionHolder(
-            plugin_base=self,
-            action_base=TriggerToggle,
-            action_id="com_secarelupus_twitchatintegration::TriggerToggle",
-            action_name="Toggle Trigger",
-        )
-        self.add_action_holder(self.trigger_toggle_holder)
-
-        self.stream_state_holder = ActionHolder(
-            plugin_base=self,
-            action_base=StreamState,
-            action_id="com_secarelupus_twitchatintegration::StreamState",
-            action_name="Stream Status",
-        )
-        self.add_action_holder(self.stream_state_holder)
-
-        self.record_state_holder = ActionHolder(
-            plugin_base=self,
-            action_base=RecordState,
-            action_id="com_secarelupus_twitchatintegration::RecordState",
-            action_name="Record Status",
-        )
-        self.add_action_holder(self.record_state_holder)
-
-        self.reward_display_holder = ActionHolder(
-            plugin_base=self,
-            action_base=RewardDisplay,
-            action_id="com_secarelupus_twitchatintegration::RewardDisplay",
-            action_name="Latest Reward",
-        )
-        self.add_action_holder(self.reward_display_holder)
-
-        self.clear_highlight_holder = ActionHolder(
-            plugin_base=self,
-            action_base=ClearHighlight,
-            action_id="com_secarelupus_twitchatintegration::ClearHighlight",
-            action_name="Clear Highlight",
-        )
-        self.add_action_holder(self.clear_highlight_holder)
-
-        # Priority 4 — panic buttons / niche
-        self.stop_tts_holder = ActionHolder(
-            plugin_base=self,
-            action_base=StopTTS,
-            action_id="com_secarelupus_twitchatintegration::StopTTS",
-            action_name="Stop TTS",
-        )
-        self.add_action_holder(self.stop_tts_holder)
-
-        self.hide_alert_holder = ActionHolder(
-            plugin_base=self,
-            action_base=HideAlert,
-            action_id="com_secarelupus_twitchatintegration::HideAlert",
-            action_name="Hide Alert",
-        )
-        self.add_action_holder(self.hide_alert_holder)
-
-        self.poll_display_holder = ActionHolder(
-            plugin_base=self,
-            action_base=PollDisplay,
-            action_id="com_secarelupus_twitchatintegration::PollDisplay",
-            action_name="Poll Status",
-        )
-        self.add_action_holder(self.poll_display_holder)
-
-        self.whisper_notify_holder = ActionHolder(
-            plugin_base=self,
-            action_base=WhisperNotify,
-            action_id="com_secarelupus_twitchatintegration::WhisperNotify",
-            action_name="Whisper Count",
-        )
-        self.add_action_holder(self.whisper_notify_holder)
-
-        # Chat message selection (cursor-based moderation system)
-        self.chat_select_up_holder = ActionHolder(
-            plugin_base=self,
-            action_base=ChatSelectUp,
-            action_id="com_secarelupus_twitchatintegration::ChatSelectUp",
-            action_name="Chat: Previous Message",
-        )
-        self.add_action_holder(self.chat_select_up_holder)
-
-        self.chat_select_down_holder = ActionHolder(
-            plugin_base=self,
-            action_base=ChatSelectDown,
-            action_id="com_secarelupus_twitchatintegration::ChatSelectDown",
-            action_name="Chat: Next Message",
-        )
-        self.add_action_holder(self.chat_select_down_holder)
-
-        self.chat_select_cancel_holder = ActionHolder(
-            plugin_base=self,
-            action_base=ChatSelectCancel,
-            action_id="com_secarelupus_twitchatintegration::ChatSelectCancel",
-            action_name="Chat: Cancel Selection",
-        )
-        self.add_action_holder(self.chat_select_cancel_holder)
-
-        self.chat_select_delete_holder = ActionHolder(
-            plugin_base=self,
-            action_base=ChatSelectDelete,
-            action_id="com_secarelupus_twitchatintegration::ChatSelectDelete",
-            action_name="Chat: Delete Message",
-        )
-        self.add_action_holder(self.chat_select_delete_holder)
-
-        self.chat_select_ban_holder = ActionHolder(
-            plugin_base=self,
-            action_base=ChatSelectBan,
-            action_id="com_secarelupus_twitchatintegration::ChatSelectBan",
-            action_name="Chat: Ban User",
-        )
-        self.add_action_holder(self.chat_select_ban_holder)
-
-        self.chat_select_pin_holder = ActionHolder(
-            plugin_base=self,
-            action_base=ChatSelectPin,
-            action_id="com_secarelupus_twitchatintegration::ChatSelectPin",
-            action_name="Chat: Pin Message",
-        )
-        self.add_action_holder(self.chat_select_pin_holder)
-
-        self.chat_select_highlight_holder = ActionHolder(
-            plugin_base=self,
-            action_base=ChatSelectHighlight,
-            action_id="com_secarelupus_twitchatintegration::ChatSelectHighlight",
-            action_name="Chat: Highlight Message",
-        )
-        self.add_action_holder(self.chat_select_highlight_holder)
-
-        self.chat_select_shoutout_holder = ActionHolder(
-            plugin_base=self,
-            action_base=ChatSelectShoutout,
-            action_id="com_secarelupus_twitchatintegration::ChatSelectShoutout",
-            action_name="Chat: Shoutout User",
-        )
-        self.add_action_holder(self.chat_select_shoutout_holder)
-
-        # Connection status indicator
-        self.connection_status_holder = ActionHolder(
-            plugin_base=self,
-            action_base=ConnectionStatus,
-            action_id="com_secarelupus_twitchatintegration::ConnectionStatus",
-            action_name="Connection Status",
-        )
-        self.add_action_holder(self.connection_status_holder)
-
-        # Register plugin
         self.register(
-            plugin_name="Twitchat",
-            github_repo="https://github.com/lupi/Twitchat-StreamController",
+            plugin_name="Twitchat Integration",
+            github_repo="https://github.com/SecareLupus/Twitchat_fr-StreamControllerPlugin",
             plugin_version="1.0.0",
-            app_version="1.5.0-beta.6"
+            app_version="1.5.0-beta.6",
         )
 
-    def on_ready(self):
-        """Called after plugin registration. Set up OBS connection."""
-        super().on_ready()
-        self._apply_credentials()
-        self.obs_connection.connect()
+        self._persist_settings()
+        self._connect_in_background()
 
-    def get_settings_area(self):
-        """Return the settings UI for OBS connection configuration."""
+    # ------------------------------------------------------------------
+    # Public API for actions
+    # ------------------------------------------------------------------
+    def broadcast(self, action: str, payload: dict | None = None) -> bool:
+        """Send a Twitchat action. Convenience wrapper for actions."""
+        return self.twitchat.send_action(action, payload)
+
+    def add_connection_listener(self, callback) -> None:
+        """Register for connection state changes. callback(connected: bool)."""
+        self._connection_listeners.append(callback)
+
+    def remove_connection_listener(self, callback) -> None:
+        try:
+            self._connection_listeners.remove(callback)
+        except ValueError:
+            pass
+
+    def reconnect(self) -> None:
+        """Public method to trigger a manual reconnection."""
+        self._connect_in_background()
+
+    @property
+    def chat_column(self) -> int:
+        """The Twitchat chat column index to target (0-based)."""
+        return self.settings.chat_column
+
+    # ------------------------------------------------------------------
+    # Plugin lifecycle
+    # ------------------------------------------------------------------
+    def on_disconnect(self, conn) -> None:
+        try:
+            self.obs_manager.disconnect()
+        finally:
+            super().on_disconnect(conn)
+
+    # ------------------------------------------------------------------
+    # Settings UI
+    # ------------------------------------------------------------------
+    def get_config_rows(self) -> list[Adw.PreferencesRow]:
+        rows: list[Adw.PreferencesRow] = []
+
+        host_row = Adw.EntryRow()
+        host_row.set_title("OBS Host")
+        host_row.set_text(self.settings.host)
+        host_row.connect("changed", self._on_host_changed)
+        rows.append(host_row)
+
+        port_row = Adw.EntryRow()
+        port_row.set_title("Port")
+        port_row.set_input_purpose(Gtk.InputPurpose.DIGITS)
+        port_row.set_text(str(self.settings.port))
+        port_row.connect("changed", self._on_port_changed)
+        rows.append(port_row)
+
+        password_row = Adw.PasswordEntryRow()
+        password_row.set_title("Password")
+        password_row.set_text(self.settings.password)
+        password_row.connect("changed", self._on_password_changed)
+        rows.append(password_row)
+
+        col_row = Adw.ComboRow(title="Chat Column")
+        col_model = Gtk.StringList()
+        for i in range(8):
+            col_model.append(f"Column {i}")
+        col_row.set_model(col_model)
+        col_row.set_selected(self.settings.chat_column)
+        col_row.connect("notify::selected", lambda r, _: self._on_chat_column_changed(r.get_selected()))
+        rows.append(col_row)
+
+        return rows
+
+    def get_settings_area(self) -> Adw.PreferencesGroup:
         from GtkHelper.GtkHelper import BetterPreferencesGroup
 
-        settings = self.get_settings()
-
-        host = settings.get("obs_host", "127.0.0.1")
-        port = str(settings.get("obs_port", 4455))
-        password = settings.get("obs_password", "")
-
         group = BetterPreferencesGroup(title="OBS Connection")
+        for row in self.get_config_rows():
+            group.add(row)
 
-        # Host
-        host_row = Adw.ActionRow(title="OBS Host")
-        host_entry = Gtk.Entry()
-        host_entry.set_text(host)
-        host_entry.set_placeholder_text("127.0.0.1")
-        host_entry.connect("changed", lambda e: self._save_setting("obs_host", e.get_text()))
-        host_row.add_suffix(host_entry)
-        group.add(host_row)
-
-        # Port
-        port_row = Adw.ActionRow(title="OBS Port")
-        port_entry = Gtk.Entry()
-        port_entry.set_text(port)
-        port_entry.set_placeholder_text("4455")
-        port_entry.connect("changed", lambda e: self._save_setting("obs_port", int(e.get_text() or 4455)))
-        port_row.add_suffix(port_entry)
-        group.add(port_row)
-
-        # Password
-        pass_row = Adw.ActionRow(title="OBS Password")
-        pass_entry = Gtk.Entry()
-        pass_entry.set_visibility(False)
-        pass_entry.set_text(password)
-        pass_entry.set_placeholder_text("Leave empty if no password")
-        pass_entry.connect("changed", lambda e: self._save_setting("obs_password", e.get_text()))
-        pass_row.add_suffix(pass_entry)
-        group.add(pass_row)
-
-        # Status
+        # Status label
         status_row = Adw.ActionRow(title="Status")
         status_label = Gtk.Label(
-            label="Connected" if self.obs_connection.connected else "Disconnected",
-            xalign=1
+            label="Connected" if self.obs_manager.is_connected() else "Disconnected",
+            xalign=1,
         )
-        self.obs_connection.add_connection_listener(
-            lambda connected: status_label.set_text("Connected" if connected else "Disconnected")
+        self.add_connection_listener(
+            lambda connected: status_label.set_text(
+                "Connected" if connected else "Disconnected"
+            )
         )
         status_row.add_suffix(status_label)
         group.add(status_row)
@@ -421,27 +191,128 @@ class TwitchatPlugin(PluginBase):
         # Reconnect button
         reconnect_row = Adw.ActionRow(title="Reconnect")
         reconnect_btn = Gtk.Button(label="Reconnect Now")
-        reconnect_btn.connect("clicked", lambda b: self.obs_connection.connect())
+        reconnect_btn.connect("clicked", lambda b: self._connect_in_background())
         reconnect_row.add_suffix(reconnect_btn)
         group.add(reconnect_row)
 
         return group
 
-    def _save_setting(self, key: str, value):
-        settings = self.get_settings()
-        settings[key] = value
-        self.set_settings(settings)
-        self._apply_credentials()
-        # Reconnect with new credentials
-        self.obs_connection.connect()
+    # ------------------------------------------------------------------
+    # Settings persistence
+    # ------------------------------------------------------------------
+    def _persist_settings(self) -> None:
+        self.set_settings(self.settings.to_dict())
 
-    def _apply_credentials(self):
-        settings = self.get_settings()
-        host = settings.get("obs_host", "127.0.0.1")
-        port = settings.get("obs_port", 4455)
-        password = settings.get("obs_password", "")
-        self.obs_connection.set_credentials(host, port, password)
+    def _update_settings(self, **changes: Any) -> None:
+        new_settings = self.settings.update(**changes)
+        if new_settings == self.settings:
+            return
 
-    def on_unload(self):
-        """Called when plugin is unloaded."""
-        self.obs_connection.disconnect()
+        logger.info("Updating Twitchat plugin settings: {}", changes)
+        self.settings = new_settings
+        self.obs_manager.update_config(
+            host=self.settings.host,
+            port=self.settings.port,
+            password=self.settings.password,
+        )
+        self._persist_settings()
+
+        if not self.obs_manager.is_connected():
+            self._connect_in_background()
+
+    # ------------------------------------------------------------------
+    # UI callbacks
+    # ------------------------------------------------------------------
+    def _on_host_changed(self, row: Adw.EntryRow) -> None:
+        self._update_settings(host=row.get_text())
+
+    def _on_port_changed(self, row: Adw.EntryRow) -> None:
+        text = row.get_text().strip()
+        if not text:
+            return
+        try:
+            port = int(text)
+        except ValueError:
+            logger.warning("Invalid OBS port entered: {}", text)
+            return
+        self._update_settings(port=port)
+
+    def _on_password_changed(self, row: Adw.PasswordEntryRow) -> None:
+        self._update_settings(password=row.get_text())
+
+    def _on_chat_column_changed(self, column: int) -> None:
+        self._update_settings(chat_column=column)
+
+    # ------------------------------------------------------------------
+    # Connection management
+    # ------------------------------------------------------------------
+    def _connect_in_background(self) -> None:
+        def worker() -> None:
+            try:
+                self.obs_manager.ensure_connection()
+                connected = self.obs_manager.is_connected()
+                self._notify_connection(connected)
+            except Exception as exc:
+                logger.warning("OBS connection attempt failed: {}", exc)
+                self._notify_connection(False)
+
+        t = threading.Thread(target=worker, name="twitchat-obs-connect", daemon=True)
+        t.start()
+
+    def _notify_connection(self, connected: bool) -> None:
+        for cb in self._connection_listeners:
+            try:
+                cb(connected)
+            except Exception:
+                pass
+
+    # ------------------------------------------------------------------
+    # Action registration
+    # ------------------------------------------------------------------
+    def _register_all_actions(self) -> None:
+        self._ah("Chat Control", ChatControl, "ChatControl")
+        self._ah("Emergency Toggle", EmergencyToggle, "EmergencyToggle")
+        self._ah("Toggle Panel Visibility", ToggleVisibility, "ToggleVisibility")
+        self._ah("Execute Trigger", TriggerExecute, "TriggerExecute")
+        self._ah("Latest Follower", FollowDisplay, "FollowDisplay")
+        self._ah("Latest Subscriber", SubDisplay, "SubDisplay")
+        self._ah("Current Track", TrackDisplay, "TrackDisplay")
+        self._ah("Shoutout", Shoutout, "Shoutout")
+        self._ah("Send Chat Message", SendMessage, "SendMessage")
+        self._ah("Latest Cheer", BitsDisplay, "BitsDisplay")
+        self._ah("Mention Alert", MentionAlert, "MentionAlert")
+        self._ah("Raffle Control", RaffleControl, "RaffleControl")
+        self._ah("Timer / Countdown", TimerControl, "TimerControl")
+        self._ah("Counter Control", CounterControl, "CounterControl")
+        self._ah("Latest Donation", DonationDisplay, "DonationDisplay")
+        self._ah("AutoMod Accept", AutomodAccept, "AutomodAccept")
+        self._ah("AutoMod Reject", AutomodReject, "AutomodReject")
+        self._ah("Toggle Trigger", TriggerToggle, "TriggerToggle")
+        self._ah("Stream Status", StreamState, "StreamState")
+        self._ah("Record Status", RecordState, "RecordState")
+        self._ah("Latest Reward", RewardDisplay, "RewardDisplay")
+        self._ah("Clear Highlight", ClearHighlight, "ClearHighlight")
+        self._ah("Stop TTS", StopTTS, "StopTTS")
+        self._ah("Hide Alert", HideAlert, "HideAlert")
+        self._ah("Poll Status", PollDisplay, "PollDisplay")
+        self._ah("Whisper Count", WhisperNotify, "WhisperNotify")
+        self._ah("Chat: Previous Message", ChatSelectUp, "ChatSelectUp")
+        self._ah("Chat: Next Message", ChatSelectDown, "ChatSelectDown")
+        self._ah("Chat: Cancel Selection", ChatSelectCancel, "ChatSelectCancel")
+        self._ah("Chat: Delete Message", ChatSelectDelete, "ChatSelectDelete")
+        self._ah("Chat: Ban User", ChatSelectBan, "ChatSelectBan")
+        self._ah("Chat: Pin Message", ChatSelectPin, "ChatSelectPin")
+        self._ah("Chat: Highlight Message", ChatSelectHighlight, "ChatSelectHighlight")
+        self._ah("Chat: Shoutout User", ChatSelectShoutout, "ChatSelectShoutout")
+        self._ah("Chat: Next Column", ChatColumnUp, "ChatColumnUp")
+        self._ah("Chat: Previous Column", ChatColumnDown, "ChatColumnDown")
+        self._ah("Connection Status", ConnectionStatus, "ConnectionStatus")
+
+    def _ah(self, name: str, action_cls, action_id: str) -> None:
+        holder = ActionHolder(
+            plugin_base=self,
+            action_base=action_cls,
+            action_id=f"com_secarelupus_twitchatintegration::{action_id}",
+            action_name=f"Twitchat: {name}",
+        )
+        self.add_action_holder(holder)
