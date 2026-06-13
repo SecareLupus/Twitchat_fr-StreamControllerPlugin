@@ -38,8 +38,8 @@ class BitsDisplay(ActionBase):
         if bits:
             latest = bits[-1]
             self._latest_name = latest.get("login", "")
-            self._latest_amount = latest.get("total", 0)
-            self._total_bits = sum(b.get("total", 0) for b in bits)
+            self._latest_amount = latest.get("bits", 0)
+            self._total_bits = sum(b.get("bits", 0) for b in bits)
             self._update_display()
 
     def _on_bits(self, data):
