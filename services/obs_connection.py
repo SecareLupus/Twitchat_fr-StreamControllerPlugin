@@ -54,7 +54,7 @@ class OBSConnectionConfig:
     password: str = ""
     use_ssl: bool = False
     request_timeout: float = 5.0
-    event_subscriptions: int = 0
+    event_subscriptions: int = 1  # General events (required for CustomEvent delivery)
 
     def as_url(self) -> str:
         scheme = "wss" if self.use_ssl else "ws"
@@ -286,7 +286,6 @@ class OBSConnectionManager:
                 break
             try:
                 message = self._ws.recv()
-                print(f"[OBS-RX] received message ({len(message)} chars)")
             except WebSocketConnectionClosedException:
                 logger.warning("Lost connection to OBS WebSocket")
                 break

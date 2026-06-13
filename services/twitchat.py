@@ -78,12 +78,6 @@ class TwitchatAPI:
             return
 
         op = payload.get("op")
-        if op == 5:
-            event = payload.get("d", {})
-            event_type = event.get("eventType", "?")
-            event_data = event.get("eventData", {})
-            origin = event_data.get("origin", "?")
-            print(f"[TwitchatAPI] OBS event: op={op} eventType={event_type} origin={origin}")
         if op != 5:  # Not an event
             return
 
@@ -98,7 +92,6 @@ class TwitchatAPI:
         twitchat_type = event_data.get("type", "")
         twitchat_data = event_data.get("data")
 
-        print(f"[TwitchatAPI] Event received: type={twitchat_type}, has_data={twitchat_data is not None}")
         self._dispatch(twitchat_type, twitchat_data)
 
     def _dispatch(self, event_type: str, data: Optional[dict]) -> None:
