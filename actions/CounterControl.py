@@ -12,6 +12,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Gtk, Adw
 
+from ..backend.obs_connection import OBSConnection
 
 
 class CounterControl(ActionBase):
@@ -25,11 +26,11 @@ class CounterControl(ActionBase):
     def on_ready(self):
         icon_path = os.path.join(self.plugin_base.PATH, "assets", "counter.svg")
         self.set_media(media_path=icon_path, size=0.75)
-        self.plugin_base.twitchat.add_listener("COUNTER_UPDATE", self._on_counter_update)
+        OBSConnection.get().add_event_listener("COUNTER_UPDATE", self._on_counter_update)
         self._update_display()
 
     def on_remove(self):
-        self.plugin_base.twitchat.remove_listener("COUNTER_UPDATE", self._on_counter_update)
+        OBSConnection.get().remove_event_listener("COUNTER_UPDATE", self._on_counter_update)
 
     def on_key_down(self):
         settings = self.get_settings()
@@ -37,7 +38,7 @@ class CounterControl(ActionBase):
         amount = settings.get("amount", 1)
 
         if counter_id:
-            self.plugin_base.twitchat.send_action("COUNTER_ADD", {
+            OBSConnection.get().send_action("COUNTER_ADD", {
                 "id": counter_id,
                 "amount": amount,
             })
@@ -97,5 +98,5 @@ class CounterControl(ActionBase):
         # If counter ID changed, request its current value
         if key == "counter_id" and value:
             self._counter_id = value
-            self.plugin_base.twitchat.send_action("COUNTER_GET", {"id": value})
+            OBSConnection.get().send_action("COUNTER_GET", {"id": value})
         self._update_display()

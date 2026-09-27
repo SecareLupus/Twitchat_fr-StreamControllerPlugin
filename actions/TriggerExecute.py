@@ -9,6 +9,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Gtk, Adw
 
+from ..backend.obs_connection import OBSConnection
 
 
 class TriggerExecute(ActionBase):
@@ -25,7 +26,7 @@ class TriggerExecute(ActionBase):
         settings = self.get_settings()
         trigger_id = settings.get("trigger_id", "")
         if trigger_id:
-            self.plugin_base.twitchat.send_action("EXECUTE_TRIGGER", {"triggerId": trigger_id})
+            OBSConnection.get().send_action("EXECUTE_TRIGGER", {"triggerId": trigger_id})
         self._update_icon()
 
     def _update_icon(self):

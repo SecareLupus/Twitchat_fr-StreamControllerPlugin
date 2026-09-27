@@ -6,6 +6,7 @@ SELECT_ACTION_* buttons to moderate messages from your Stream Deck.
 import os
 from src.backend.PluginManager.ActionBase import ActionBase
 
+from ..backend.obs_connection import OBSConnection
 
 
 class ChatSelectUp(ActionBase):
@@ -18,5 +19,4 @@ class ChatSelectUp(ActionBase):
         self.set_bottom_label("Prev Msg")
 
     def on_key_down(self):
-        col = self.plugin_base.chat_column
-        self.plugin_base.twitchat.send_action("CHAT_FEED_SELECT", {"count": -1, "col": col})
+        OBSConnection.get().send_action("CHAT_FEED_SELECT", {"count": -1})

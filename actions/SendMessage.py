@@ -10,6 +10,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Gtk, Adw
 
+from ..backend.obs_connection import OBSConnection
 
 
 class SendMessage(ActionBase):
@@ -26,7 +27,7 @@ class SendMessage(ActionBase):
         settings = self.get_settings()
         message = settings.get("message", "")
         if message:
-            self.plugin_base.twitchat.send_action("SEND_MESSAGE", {"message": message})
+            OBSConnection.get().send_action("SEND_MESSAGE", {"message": message})
 
     def _update_display(self):
         settings = self.get_settings()

@@ -9,6 +9,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Gtk, Adw
 
+from ..backend.obs_connection import OBSConnection
 
 
 TOGGLE_TARGETS = {
@@ -37,7 +38,7 @@ class ToggleVisibility(ActionBase):
         settings = self.get_settings()
         target_key = settings.get("target", "poll")
         target = TOGGLE_TARGETS.get(target_key, TOGGLE_TARGETS["poll"])
-        self.plugin_base.twitchat.send_action(target["action"])
+        OBSConnection.get().send_action(target["action"])
         self._update_icon()
 
     def _update_icon(self):

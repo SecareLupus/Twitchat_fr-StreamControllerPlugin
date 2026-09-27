@@ -4,6 +4,7 @@ Emergency Toggle action — toggles Twitchat emergency mode on/off.
 import os
 from src.backend.PluginManager.ActionBase import ActionBase
 
+from ..backend.obs_connection import OBSConnection
 
 
 class EmergencyToggle(ActionBase):
@@ -16,14 +17,14 @@ class EmergencyToggle(ActionBase):
         self.set_media(media_path=icon_path, size=0.75)
         self._update_icon()
         # Subscribe to emergency mode events to keep state in sync
-        self.plugin_base.twitchat.add_listener("EMERGENCY_MODE", self._on_emergency_event)
+        OBSConnection.get().add_event_listener("EMERGENCY_MODE", self._on_emergency_event)
 
     def on_remove(self):
-        self.plugin_base.twitchat.remove_listener("EMERGENCY_MODE", self._on_emergency_event)
+        OBSConnection.get().remove_event_listener("EMERGENCY_MODE", self._on_emergency_event)
 
     def on_key_down(self):
         # Send SET_EMERGENCY_MODE without data to toggle
-        self.plugin_base.twitchat.send_action("SET_EMERGENCY_MODE")
+        OBSConnection.get().send_action("SET_EMERGENCY_MODE")
         self._emergency_active = not self._emergency_active
         self._update_icon()
 

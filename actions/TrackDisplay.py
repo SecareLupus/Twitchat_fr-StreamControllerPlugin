@@ -5,6 +5,7 @@ Subscribes to CURRENT_TRACK events from Twitchat.
 import os
 from src.backend.PluginManager.ActionBase import ActionBase
 
+from ..backend.obs_connection import OBSConnection
 
 
 class TrackDisplay(ActionBase):
@@ -16,15 +17,15 @@ class TrackDisplay(ActionBase):
     def on_ready(self):
         icon_path = os.path.join(self.plugin_base.PATH, "assets", "display.svg")
         self.set_media(media_path=icon_path, size=0.75)
-        self.plugin_base.twitchat.add_listener("CURRENT_TRACK", self._on_track)
+        OBSConnection.get().add_event_listener("CURRENT_TRACK", self._on_track)
         self._update_display()
 
     def on_remove(self):
-        self.plugin_base.twitchat.remove_listener("CURRENT_TRACK", self._on_track)
+        OBSConnection.get().remove_event_listener("CURRENT_TRACK", self._on_track)
 
     def on_key_down(self):
         # Request current track info
-        self.plugin_base.twitchat.send_action("GET_CURRENT_TRACK")
+        OBSConnection.get().send_action("GET_CURRENT_TRACK")
 
     def _on_track(self, data):
         if data and "trackName" in data:

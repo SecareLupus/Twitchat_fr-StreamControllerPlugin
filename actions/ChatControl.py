@@ -13,6 +13,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Gtk, Adw
 
+from ..backend.obs_connection import OBSConnection
 
 
 CHAT_OPERATIONS = {
@@ -50,7 +51,7 @@ class ChatControl(ActionBase):
             else:
                 data = {"count": count}
 
-        self.plugin_base.twitchat.send_action(op["action"], data)
+        OBSConnection.get().send_action(op["action"], data)
         self._update_icon()
 
     def _update_icon(self):

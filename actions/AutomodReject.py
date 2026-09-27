@@ -6,6 +6,7 @@ messages for the latest held message and denies it.
 import os
 from src.backend.PluginManager.ActionBase import ActionBase
 
+from ..backend.obs_connection import OBSConnection
 
 
 class AutomodReject(ActionBase):
@@ -18,4 +19,4 @@ class AutomodReject(ActionBase):
         self.set_bottom_label("Reject")
 
     def on_key_down(self):
-        self.plugin_base.twitchat.send_action("AUTOMOD_REJECT")
+        OBSConnection.get().send_action("AUTOMOD_REJECT")

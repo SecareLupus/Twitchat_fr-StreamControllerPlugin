@@ -5,6 +5,7 @@ Sends CHAT_FEED_SELECT_ACTION_PIN.
 import os
 from src.backend.PluginManager.ActionBase import ActionBase
 
+from ..backend.obs_connection import OBSConnection
 
 
 class ChatSelectPin(ActionBase):
@@ -17,4 +18,4 @@ class ChatSelectPin(ActionBase):
         self.set_bottom_label("Pin")
 
     def on_key_down(self):
-        self.plugin_base.twitchat.send_action("CHAT_FEED_SELECT_ACTION_PIN")
+        OBSConnection.get().send_action("CHAT_FEED_SELECT_ACTION_PIN")

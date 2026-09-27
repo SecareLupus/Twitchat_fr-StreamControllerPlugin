@@ -5,6 +5,7 @@ Sends STOP_TTS with no parameters. Panic button for rogue TTS.
 import os
 from src.backend.PluginManager.ActionBase import ActionBase
 
+from ..backend.obs_connection import OBSConnection
 
 
 class StopTTS(ActionBase):
@@ -17,4 +18,4 @@ class StopTTS(ActionBase):
         self.set_bottom_label("Stop TTS")
 
     def on_key_down(self):
-        self.plugin_base.twitchat.send_action("STOP_TTS")
+        OBSConnection.get().send_action("STOP_TTS")

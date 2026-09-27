@@ -5,6 +5,7 @@ Sends CLEAR_CHAT_HIGHLIGHT with no parameters.
 import os
 from src.backend.PluginManager.ActionBase import ActionBase
 
+from ..backend.obs_connection import OBSConnection
 
 
 class ClearHighlight(ActionBase):
@@ -17,4 +18,4 @@ class ClearHighlight(ActionBase):
         self.set_bottom_label("Clear HL")
 
     def on_key_down(self):
-        self.plugin_base.twitchat.send_action("CLEAR_CHAT_HIGHLIGHT")
+        OBSConnection.get().send_action("CLEAR_CHAT_HIGHLIGHT")

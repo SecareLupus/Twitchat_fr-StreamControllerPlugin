@@ -5,6 +5,7 @@ Subscribes to MESSAGE_WHISPER events. Displays count on the key.
 import os
 from src.backend.PluginManager.ActionBase import ActionBase
 
+from ..backend.obs_connection import OBSConnection
 
 
 class WhisperNotify(ActionBase):
@@ -16,15 +17,15 @@ class WhisperNotify(ActionBase):
     def on_ready(self):
         icon_path = os.path.join(self.plugin_base.PATH, "assets", "display.svg")
         self.set_media(media_path=icon_path, size=0.75)
-        self.plugin_base.twitchat.add_listener("MESSAGE_WHISPER", self._on_whisper)
+        OBSConnection.get().add_event_listener("MESSAGE_WHISPER", self._on_whisper)
         self._update_display()
 
     def on_remove(self):
-        self.plugin_base.twitchat.remove_listener("MESSAGE_WHISPER", self._on_whisper)
+        OBSConnection.get().remove_event_listener("MESSAGE_WHISPER", self._on_whisper)
 
     def on_key_down(self):
         # Mark all whispers read
-        self.plugin_base.twitchat.send_action("GREET_FEED_READ_ALL")
+        OBSConnection.get().send_action("GREET_FEED_READ_ALL")
         self._unread = 0
         self._last_sender = ""
         self._update_display()

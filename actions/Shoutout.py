@@ -1,10 +1,10 @@
 """
-Shoutout — sends a shoutout to the latest raider.
-Sends SHOUTOUT action with no parameters. Twitchat looks up
-the most recent raider and shouts them out automatically.
+Shoutout action — sends a shoutout to the latest raider with one press.
 """
 import os
 from src.backend.PluginManager.ActionBase import ActionBase
+
+from ..backend.obs_connection import OBSConnection
 
 
 class Shoutout(ActionBase):
@@ -17,4 +17,4 @@ class Shoutout(ActionBase):
         self.set_bottom_label("Shoutout")
 
     def on_key_down(self):
-        self.plugin_base.twitchat.send_action("SHOUTOUT")
+        OBSConnection.get().send_action("SHOUTOUT")

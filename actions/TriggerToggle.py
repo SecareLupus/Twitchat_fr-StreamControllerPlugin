@@ -10,6 +10,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Gtk, Adw
 
+from ..backend.obs_connection import OBSConnection
 
 
 TOGGLE_MODES = {
@@ -34,7 +35,7 @@ class TriggerToggle(ActionBase):
         mode = settings.get("mode", "enable")
         if trigger_id:
             enabled = mode == "enable"
-            self.plugin_base.twitchat.send_action("TOGGLE_TRIGGER", {
+            OBSConnection.get().send_action("TOGGLE_TRIGGER", {
                 "triggerId": trigger_id,
                 "enabled": enabled,
             })

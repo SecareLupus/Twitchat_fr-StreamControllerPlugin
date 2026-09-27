@@ -6,6 +6,7 @@ messages for the latest held message and allows it through.
 import os
 from src.backend.PluginManager.ActionBase import ActionBase
 
+from ..backend.obs_connection import OBSConnection
 
 
 class AutomodAccept(ActionBase):
@@ -18,4 +19,4 @@ class AutomodAccept(ActionBase):
         self.set_bottom_label("Accept")
 
     def on_key_down(self):
-        self.plugin_base.twitchat.send_action("AUTOMOD_ACCEPT")
+        OBSConnection.get().send_action("AUTOMOD_ACCEPT")

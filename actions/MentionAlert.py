@@ -9,6 +9,7 @@ from src.backend.PluginManager.PluginBase import PluginBase
 from src.backend.DeckManagement.DeckController import DeckController
 from src.backend.PageManagement.Page import Page
 
+from ..backend.obs_connection import OBSConnection
 
 
 class MentionAlert(ActionBase):
@@ -22,13 +23,13 @@ class MentionAlert(ActionBase):
     def on_ready(self):
         icon_path = os.path.join(self.plugin_base.PATH, "assets", "alert.svg")
         self.set_media(media_path=icon_path, size=0.75)
-        self.plugin_base.twitchat.add_listener("MENTION", self._on_mention)
+        OBSConnection.get().add_event_listener("MENTION", self._on_mention)
         self.set_background_color([0, 100, 0, 255])
         self.set_center_label("No @mentions")
         self.set_bottom_label("")
 
     def on_remove(self):
-        self.plugin_base.twitchat.remove_listener("MENTION", self._on_mention)
+        OBSConnection.get().remove_event_listener("MENTION", self._on_mention)
 
     def on_key_down(self):
         self._last_mention = ""

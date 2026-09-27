@@ -5,6 +5,7 @@ Sends HIDE_ALERT with no parameters.
 import os
 from src.backend.PluginManager.ActionBase import ActionBase
 
+from ..backend.obs_connection import OBSConnection
 
 
 class HideAlert(ActionBase):
@@ -17,4 +18,4 @@ class HideAlert(ActionBase):
         self.set_bottom_label("Hide Alert")
 
     def on_key_down(self):
-        self.plugin_base.twitchat.send_action("HIDE_ALERT")
+        OBSConnection.get().send_action("HIDE_ALERT")

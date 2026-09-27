@@ -5,6 +5,7 @@ Green = connected, red = disconnected. Press to reconnect.
 import os
 from src.backend.PluginManager.ActionBase import ActionBase
 
+from ..backend.obs_connection import OBSConnection
 
 
 class ConnectionStatus(ActionBase):
@@ -15,16 +16,16 @@ class ConnectionStatus(ActionBase):
     def on_ready(self):
         icon_path = os.path.join(self.plugin_base.PATH, "assets", "record.svg")
         self.set_media(media_path=icon_path, size=0.75)
-        conn = self.plugin_base
-        self._connected = conn.obs_manager.is_connected()
+        conn = OBSConnection.get()
+        self._connected = conn.connected
         conn.add_connection_listener(self._on_connection_change)
         self._update_display()
 
     def on_remove(self):
-        self.plugin_base.remove_connection_listener(self._on_connection_change)
+        OBSConnection.get().remove_connection_listener(self._on_connection_change)
 
     def on_key_down(self):
-        self.plugin_base.reconnect()
+        OBSConnection.get().connect()
 
     def _on_connection_change(self, connected: bool):
         self._connected = connected

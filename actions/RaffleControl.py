@@ -15,6 +15,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Gtk, Adw
 
+from ..backend.obs_connection import OBSConnection
 
 
 RAFFLE_MODES = {
@@ -33,11 +34,11 @@ class RaffleControl(ActionBase):
     def on_ready(self):
         icon_path = os.path.join(self.plugin_base.PATH, "assets", "raffle.svg")
         self.set_media(media_path=icon_path, size=0.75)
-        self.plugin_base.twitchat.add_listener("RAFFLE_RESULT", self._on_raffle_result)
+        OBSConnection.get().add_event_listener("RAFFLE_RESULT", self._on_raffle_result)
         self._update_display()
 
     def on_remove(self):
-        self.plugin_base.twitchat.remove_listener("RAFFLE_RESULT", self._on_raffle_result)
+        OBSConnection.get().remove_event_listener("RAFFLE_RESULT", self._on_raffle_result)
 
     def on_key_down(self):
         settings = self.get_settings()
@@ -52,11 +53,11 @@ class RaffleControl(ActionBase):
                 "duration_s": duration,
                 "showCountdownOverlay": True,
             }
-            self.plugin_base.twitchat.send_action("RAFFLE_START", data)
+            OBSConnection.get().send_action("RAFFLE_START", data)
         elif mode == "pick":
-            self.plugin_base.twitchat.send_action("RAFFLE_PICK_WINNER")
+            OBSConnection.get().send_action("RAFFLE_PICK_WINNER")
         elif mode == "end":
-            self.plugin_base.twitchat.send_action("RAFFLE_END")
+            OBSConnection.get().send_action("RAFFLE_END")
 
     def _on_raffle_result(self, data):
         if data and "label" in data:

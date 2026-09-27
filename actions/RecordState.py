@@ -6,6 +6,7 @@ Red dot + "REC" when recording, dark when stopped.
 import os
 from src.backend.PluginManager.ActionBase import ActionBase
 
+from ..backend.obs_connection import OBSConnection
 
 
 class RecordState(ActionBase):
@@ -16,11 +17,11 @@ class RecordState(ActionBase):
     def on_ready(self):
         icon_path = os.path.join(self.plugin_base.PATH, "assets", "record.svg")
         self.set_media(media_path=icon_path, size=0.75)
-        self.plugin_base.twitchat.add_listener("OBS_RECORD_STATE", self._on_record_state)
+        OBSConnection.get().add_event_listener("OBS_RECORD_STATE", self._on_record_state)
         self._update_display()
 
     def on_remove(self):
-        self.plugin_base.twitchat.remove_listener("OBS_RECORD_STATE", self._on_record_state)
+        OBSConnection.get().remove_event_listener("OBS_RECORD_STATE", self._on_record_state)
 
     def _on_record_state(self, data):
         if not data:

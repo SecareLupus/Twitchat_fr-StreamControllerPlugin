@@ -90,7 +90,7 @@ class TwitchatIntegrationPlugin(PluginBase):
             plugin_name="Twitchat Integration",
             github_repo="https://github.com/SecareLupus/Twitchat_fr-StreamControllerPlugin",
             plugin_version="1.0.0",
-            app_version="1.5.0-beta.6",
+            app_version="1.5.0-beta.16"
         )
 
         self._persist_settings()

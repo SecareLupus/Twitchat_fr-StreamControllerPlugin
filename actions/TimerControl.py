@@ -19,6 +19,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Gtk, Adw
 
+from ..backend.obs_connection import OBSConnection
 
 
 TIMER_MODES = {
@@ -40,19 +41,19 @@ class TimerControl(ActionBase):
     def on_ready(self):
         icon_path = os.path.join(self.plugin_base.PATH, "assets", "timer.svg")
         self.set_media(media_path=icon_path, size=0.75)
-        conn = self.plugin_base.twitchat
-        conn.add_listener("TIMER_START", self._on_timer_event)
-        conn.add_listener("TIMER_STOP", self._on_timer_event)
-        conn.add_listener("COUNTDOWN_START", self._on_timer_event)
-        conn.add_listener("COUNTDOWN_COMPLETE", self._on_timer_event)
+        conn = OBSConnection.get()
+        conn.add_event_listener("TIMER_START", self._on_timer_event)
+        conn.add_event_listener("TIMER_STOP", self._on_timer_event)
+        conn.add_event_listener("COUNTDOWN_START", self._on_timer_event)
+        conn.add_event_listener("COUNTDOWN_COMPLETE", self._on_timer_event)
         self._update_display()
 
     def on_remove(self):
-        conn = self.plugin_base.twitchat
-        conn.remove_listener("TIMER_START", self._on_timer_event)
-        conn.remove_listener("TIMER_STOP", self._on_timer_event)
-        conn.remove_listener("COUNTDOWN_START", self._on_timer_event)
-        conn.remove_listener("COUNTDOWN_COMPLETE", self._on_timer_event)
+        conn = OBSConnection.get()
+        conn.remove_event_listener("TIMER_START", self._on_timer_event)
+        conn.remove_event_listener("TIMER_STOP", self._on_timer_event)
+        conn.remove_event_listener("COUNTDOWN_START", self._on_timer_event)
+        conn.remove_event_listener("COUNTDOWN_COMPLETE", self._on_timer_event)
 
     def on_key_down(self):
         settings = self.get_settings()
@@ -61,22 +62,22 @@ class TimerControl(ActionBase):
         duration_ms = settings.get("duration_ms", 300000)
 
         if mode == "start_timer":
-            self.plugin_base.twitchat.send_action("TIMER_ADD", {
+            OBSConnection.get().send_action("TIMER_ADD", {
                 "name": name,
                 "duration_ms": 0,
             })
         elif mode == "start_countdown":
-            self.plugin_base.twitchat.send_action("COUNTDOWN_ADD", {
+            OBSConnection.get().send_action("COUNTDOWN_ADD", {
                 "name": name,
                 "duration_ms": duration_ms,
             })
         elif mode == "get_current":
-            self.plugin_base.twitchat.send_action("GET_CURRENT_TIMERS")
+            OBSConnection.get().send_action("GET_CURRENT_TIMERS")
         elif mode == "stop":
             # We don't have a direct "stop timer" action, but TIMER_ADD
             # can be used to reset, or we can rely on the user stopping
             # from Twitchat UI. GET_CURRENT_TIMERS will update display.
-            self.plugin_base.twitchat.send_action("GET_CURRENT_TIMERS")
+            OBSConnection.get().send_action("GET_CURRENT_TIMERS")
 
     def _on_timer_event(self, data):
         if not data:
