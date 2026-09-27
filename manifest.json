@@ -1,6 +1,6 @@
 {
     "version": "1.0.0",
-    "thumbnail": "",
+    "thumbnail": "assets/chat.svg",
     "id": "com_secarelupus_twitchatintegration",
     "name": "Twitchat Integration"
 }
